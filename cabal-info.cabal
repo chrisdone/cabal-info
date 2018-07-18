@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                cabal-info
-version:             0.2.1
+version:             0.3
 synopsis:            Read information from cabal files
 description:
   Have you ever needed to get information from a cabal file in a shell

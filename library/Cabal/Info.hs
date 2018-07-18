@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase    #-}
 {-# LANGUAGE TupleSections #-}
 
 -- | Get information from cabal files.
@@ -38,21 +38,24 @@ module Cabal.Info
   , moduleFilePath
   ) where
 
-import Control.Exception (SomeException, catch)
-import Control.Monad (unless)
+import           Control.Exception                             (SomeException,
+                                                                catch)
+import           Control.Monad                                 (unless)
 
-import Data.Maybe (fromMaybe, listToMaybe)
+import           Data.Maybe                                    (fromMaybe,
+                                                                listToMaybe)
 
-import Distribution.Compiler
-import Distribution.InstalledPackageInfo (PError(..))
-import Distribution.ModuleName
-import Distribution.PackageDescription
-import Distribution.PackageDescription.Configuration
-import Distribution.PackageDescription.Parse
-import Distribution.System
-
-import System.FilePath
-import System.Directory (getCurrentDirectory, getDirectoryContents)
+import           Distribution.Compiler
+import           Distribution.InstalledPackageInfo             (PError (..))
+import           Distribution.ModuleName
+import           Distribution.PackageDescription
+import           Distribution.PackageDescription.Configuration
+import           Distribution.PackageDescription.Parse
+import           Distribution.System
+import           Distribution.Types.ComponentRequestedSpec
+import           System.Directory                              (getCurrentDirectory,
+                                                                getDirectoryContents)
+import           System.FilePath
 
 -- * Errors
 
@@ -75,11 +78,11 @@ data CabalError =
 prettyPrintErr :: CabalError -> String
 prettyPrintErr NoCabalFile = "Could not find .cabal file."
 prettyPrintErr (ParseError fp err) = "Parse error in " ++ fp ++ ": " ++ show' err ++ "." where
-  show' (AmbiguousParse _ l) = "ambiguous parse on line " ++ show l
-  show' (NoParse _ l) = "no parse on line " ++ show l
-  show' (TabsError l) = "tabbing error on line " ++ show l
+  show' (AmbiguousParse _ l)    = "ambiguous parse on line " ++ show l
+  show' (NoParse _ l)           = "no parse on line " ++ show l
+  show' (TabsError l)           = "tabbing error on line " ++ show l
   show' (FromString _ (Just l)) = "no parse on line " ++ show l
-  show' (FromString _ Nothing) = "no parse"
+  show' (FromString _ Nothing)  = "no parse"
 prettyPrintErr (NoFlagAssignment (Just fp)) = "Could not find flag assignment for " ++ fp ++ "."
 prettyPrintErr (NoFlagAssignment Nothing) = "Could not find flag assignment."
 prettyPrintErr (NoLibrary fp) = "Missing library section in " ++ fp ++ "."
@@ -132,8 +135,8 @@ openPackageDescription' flags os arch fp = openGenericPackageDescription fp <$$>
 openGenericPackageDescription :: FilePath -> IO (Either CabalError GenericPackageDescription)
 openGenericPackageDescription fp = do
   cabalFile <- readFile fp
-  pure $ case parsePackageDescription cabalFile of
-    ParseOk _ pkg -> Right pkg
+  pure $ case parseGenericPackageDescription cabalFile of
+    ParseOk _ pkg   -> Right pkg
     ParseFailed err -> Left $ ParseError fp err
 
 -- * Conditionals
@@ -141,7 +144,7 @@ openGenericPackageDescription fp = do
 -- | Apply the given flags, operating system, and architecture.
 evaluateConditions :: FlagAssignment -> Maybe OS -> Maybe Arch -> Maybe FilePath -> GenericPackageDescription -> Either CabalError PackageDescription
 evaluateConditions flags os arch fp gpkg = either (const . Left $ NoFlagAssignment fp) (Right . fst) $
-  finalizePackageDescription flags (const True) platform compiler [] gpkg
+  finalizePD flags defaultComponentRequestedSpec (const True) platform compiler [] gpkg
 
   where
     platform = Platform (fromMaybe buildArch arch) (fromMaybe buildOS os)
