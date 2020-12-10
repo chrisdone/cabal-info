@@ -22,22 +22,23 @@ module Cabal.Info
   , openPackageDescription
   , openPackageDescription'
   , openGenericPackageDescription
-
   -- * Errors
   , CabalError(..)
   , prettyPrintErr
-
   -- * Conditionals
   , evaluateConditions
-
   -- * Libraries
   , getLibrary
   , getLibraryModules
-
   -- * Modules
   , moduleFilePath
   ) where
+import qualified Data.ByteString as S
+import Data.ByteString (ByteString)
+import Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.List.NonEmpty as NE
 
+import Distribution.Parsec.Error
 import           Control.Exception                             (SomeException,
                                                                 catch)
 import           Control.Monad                                 (unless)
@@ -46,11 +47,12 @@ import           Data.Maybe                                    (fromMaybe,
                                                                 listToMaybe)
 
 import           Distribution.Compiler
-import           Distribution.InstalledPackageInfo             (PError (..))
+-- import           Distribution.InstalledPackageInfo             (PError (..))
 import           Distribution.ModuleName
 import           Distribution.PackageDescription
 import           Distribution.PackageDescription.Configuration
-import           Distribution.PackageDescription.Parse
+-- import           Distribution.PackageDescription.Parse
+import Distribution.PackageDescription.Parsec
 import           Distribution.System
 import           Distribution.Types.ComponentRequestedSpec
 import           System.Directory                              (getCurrentDirectory,
@@ -72,17 +74,12 @@ data CabalError =
   -- ^ A consistent flag assignment could not be found.
   | NoLibrary FilePath
   -- ^ There is no library section.
-  deriving (Eq, Show)
+  deriving (Show)
 
 -- | Pretty-print an error.
 prettyPrintErr :: CabalError -> String
 prettyPrintErr NoCabalFile = "Could not find .cabal file."
-prettyPrintErr (ParseError fp err) = "Parse error in " ++ fp ++ ": " ++ show' err ++ "." where
-  show' (AmbiguousParse _ l)    = "ambiguous parse on line " ++ show l
-  show' (NoParse _ l)           = "no parse on line " ++ show l
-  show' (TabsError l)           = "tabbing error on line " ++ show l
-  show' (FromString _ (Just l)) = "no parse on line " ++ show l
-  show' (FromString _ Nothing)  = "no parse"
+prettyPrintErr (ParseError fp err) = showPError fp err
 prettyPrintErr (NoFlagAssignment (Just fp)) = "Could not find flag assignment for " ++ fp ++ "."
 prettyPrintErr (NoFlagAssignment Nothing) = "Could not find flag assignment."
 prettyPrintErr (NoLibrary fp) = "Missing library section in " ++ fp ++ "."
@@ -107,7 +104,7 @@ findCabalFile = do
 
 -- | Find and read the .cabal file, applying the default flags.
 findPackageDescription :: IO (Either CabalError (PackageDescription, FilePath))
-findPackageDescription = findPackageDescription' [] Nothing Nothing
+findPackageDescription = findPackageDescription' (mkFlagAssignment []) Nothing Nothing
 
 -- | Find and read the .cabal file, applying the given flags,
 -- operating system, and architecture.
@@ -122,7 +119,7 @@ findGenericPackageDescription = findCabalFile >>=
 
 -- | Open and parse a .cabal file, applying the default flags.
 openPackageDescription :: FilePath -> IO (Either CabalError PackageDescription)
-openPackageDescription = openPackageDescription' [] Nothing Nothing
+openPackageDescription = openPackageDescription' (mkFlagAssignment []) Nothing Nothing
 
 -- | Open and parse a .cabal file, and apply the given flags,
 -- operating system, and architecture.
@@ -134,10 +131,10 @@ openPackageDescription' flags os arch fp = openGenericPackageDescription fp <$$>
 -- | Open and parse a .cabal file.
 openGenericPackageDescription :: FilePath -> IO (Either CabalError GenericPackageDescription)
 openGenericPackageDescription fp = do
-  cabalFile <- readFile fp
-  pure $ case parseGenericPackageDescription cabalFile of
-    ParseOk _ pkg   -> Right pkg
-    ParseFailed err -> Left $ ParseError fp err
+  cabalFile <- S.readFile fp
+  pure $ case runParseResult (parseGenericPackageDescription cabalFile) of
+    (_, Right pkg)   -> Right pkg
+    (_, Left (_mversion, err)) -> Left $ ParseError fp (NE.head err)
 
 -- * Conditionals
 

@@ -1,17 +1,18 @@
 -- | Accessing fields from packages.
 module Fields where
 
-import           Control.Applicative                    ((<|>))
-import           Data.Char                              (toLower)
+import Control.Applicative ((<|>))
+import Data.Char (toLower)
 import           Data.Maybe                             (fromMaybe, listToMaybe,
                                                          maybeToList)
+import Distribution.Utils.ShortText
 
-import           Distribution.Compiler                  (CompilerFlavor (GHC))
-import           Distribution.Package
-import           Distribution.PackageDescription
-import           Distribution.Text                      (display)
-import           Distribution.Types.UnqualComponentName
-import           Distribution.Version
+import Distribution.Compiler (perCompilerFlavorToList, CompilerFlavor (GHC))
+import Distribution.Package
+import Distribution.PackageDescription
+import Distribution.Text (display)
+import Distribution.Types.UnqualComponentName
+import Distribution.Version
 
 -- | A field name is a string, optionally qualified with a specific
 -- executable/test-suite/benchmark.
@@ -83,25 +84,25 @@ getPackageDescriptionField "extra-source-files" = unlines' . extraSrcFiles
 getPackageDescriptionField "extra-doc-files" = unlines' . extraDocFiles
 getPackageDescriptionField "extra-tmp-files" = unlines' . extraTmpFiles
 getPackageDescriptionField "license-files" = unlines' . licenseFiles
-getPackageDescriptionField "build-depends" = unlines' . map display . buildDepends
+getPackageDescriptionField "build-depends" = unlines' . map display . allBuildDepends
 getPackageDescriptionField "license-file" = unlines' . licenseFiles
-getPackageDescriptionField "package-url" = pkgUrl
-getPackageDescriptionField "bug-reports" = bugReports
-getPackageDescriptionField "description" = description
+getPackageDescriptionField "package-url" = fromShortText . pkgUrl
+getPackageDescriptionField "bug-reports" = fromShortText .bugReports
+getPackageDescriptionField "description" = fromShortText .description
 getPackageDescriptionField "tested-with" = unlines' . map (\(c, v) ->
                                                         display c ++ " " ++ display v) . testedWith
 getPackageDescriptionField "data-files" = unlines' . dataFiles
-getPackageDescriptionField "maintainer" = maintainer
-getPackageDescriptionField "build-type" = unlines' . map display . maybeToList . buildType
-getPackageDescriptionField "copyright" = copyright
-getPackageDescriptionField "stability" = stability
+getPackageDescriptionField "maintainer" = fromShortText .maintainer
+getPackageDescriptionField "build-type" = unlines' . map display . maybeToList . buildTypeRaw
+getPackageDescriptionField "copyright" = fromShortText .copyright
+getPackageDescriptionField "stability" = fromShortText .stability
 getPackageDescriptionField "data-dir" = dataDir
-getPackageDescriptionField "homepage" = homepage
-getPackageDescriptionField "synopsis" = synopsis
-getPackageDescriptionField "category" = category
+getPackageDescriptionField "homepage" = fromShortText .homepage
+getPackageDescriptionField "synopsis" = fromShortText .synopsis
+getPackageDescriptionField "category" = fromShortText .category
 getPackageDescriptionField "version" = display . pkgVersion . package
 getPackageDescriptionField "license" = display . license
-getPackageDescriptionField "author" = author
+getPackageDescriptionField "author" = fromShortText .author
 getPackageDescriptionField "name" = unPackageName . pkgName . package
 getPackageDescriptionField _ = const ""
 
@@ -238,9 +239,9 @@ getBuildInfoField field = unlines' . get field where
   get "extensions"         = map display . oldExtensions
   get "default-extensions" = map display . defaultExtensions
   get "other-extensions"   = map display . otherExtensions
-  get "ghc-options"        = concatMap snd . filter ((==GHC) . fst) . options
-  get "ghc-prof-options"   = concatMap snd . filter ((==GHC) . fst) . profOptions
-  get "ghc-shared-options" = concatMap snd . filter ((==GHC) . fst) . sharedOptions
+  get "ghc-options"        = concatMap snd . filter ((==GHC) . fst) . perCompilerFlavorToList . options
+  get "ghc-prof-options"   = concatMap snd . filter ((==GHC) . fst) . perCompilerFlavorToList . profOptions
+  get "ghc-shared-options" = concatMap snd . filter ((==GHC) . fst) . perCompilerFlavorToList. sharedOptions
   get "pkgconfig-depends"  = map display . pkgconfigDepends
   get "install-includes"   = installIncludes
   get "hs-source-dirs" = hsSourceDirs

@@ -42,6 +42,7 @@ library
                   , directory
                   , filepath
                   , optparse-applicative
+                  , bytestring
   hs-source-dirs:   library
   default-language: Haskell2010
 
@@ -52,6 +53,7 @@ executable cabal-info
                   , Fields
   build-depends:    base >=4.8 && <5
                   , cabal-info
+                  , bytestring
                   , Cabal
                   , filepath
                   , optparse-applicative

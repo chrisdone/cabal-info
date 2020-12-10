@@ -3,7 +3,7 @@ module Args where
 
 import           Data.Char                       (toLower)
 import           Data.Monoid                     ((<>))
-import           Distribution.PackageDescription (FlagAssignment, mkFlagName)
+import           Distribution.PackageDescription (mkFlagAssignment, FlagAssignment, mkFlagName)
 import           Distribution.System             (Arch (..), OS (..))
 import           Options.Applicative
 import           System.FilePath                 (FilePath)
@@ -44,7 +44,7 @@ argsParser = Args
   <*> optional fieldNameParser
 
 flagAssignmentParser :: Parser FlagAssignment
-flagAssignmentParser = map go . words <$> strOption (long "flags" <> short 'f' <> metavar "FLAGS" <> help "Force values for the given flags in Cabal conditionals in the .cabal file. E.g. --flags=\"debug -usebytestrings\" forces the flag \"debug\" to true and the flag \"usebytestrings\" to false." <> value "") where
+flagAssignmentParser = fmap mkFlagAssignment $ map go . words <$> strOption (long "flags" <> short 'f' <> metavar "FLAGS" <> help "Force values for the given flags in Cabal conditionals in the .cabal file. E.g. --flags=\"debug -usebytestrings\" forces the flag \"debug\" to true and the flag \"usebytestrings\" to false." <> value "") where
 
   go ('-':flag) = (mkFlagName flag, False)
   go flag       = (mkFlagName flag, True)
